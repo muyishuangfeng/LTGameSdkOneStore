@@ -68,7 +68,7 @@ public class OneStorePlayManager {
      * @param context   上下文
      * @param mListener 回调
      */
-    public void initOneStore(final Activity context, final String url, final String LTAppID, final String LTAppKey,
+    public void initOneStore(final Activity context,  final String LTAppID, final String LTAppKey,
                              final String packageID, final Map<String, Object> params, final onOneStoreSupportListener mListener,
                              final onOneStoreUploadListener mUpdateListener) {
         mPurchaseClient.connect(new PurchaseClient.ServiceConnectionListener() {
@@ -77,7 +77,7 @@ public class OneStorePlayManager {
                 if (mListener != null) {
                     mListener.onOneStoreConnected();
                 }
-                checkBillingSupportedAndLoadPurchases(context, url, LTAppID, LTAppKey, mListener,
+                checkBillingSupportedAndLoadPurchases(context,  LTAppID, LTAppKey, mListener,
                         mUpdateListener);
                 getLTOrderID( LTAppID, LTAppKey, packageID, params);
             }
@@ -102,7 +102,7 @@ public class OneStorePlayManager {
     /**
      * 检查是否支持
      */
-    private void checkBillingSupportedAndLoadPurchases(final Context context, final String url,
+    private void checkBillingSupportedAndLoadPurchases(final Context context,
                                                        final String LTAppID, final String LTAppKey,
                                                        final onOneStoreSupportListener mListener,
                                                        final onOneStoreUploadListener mUploadListener) {
@@ -116,7 +116,7 @@ public class OneStorePlayManager {
                 public void onSuccess() {
                     mListener.onOneStoreSuccess(OneStoreResult.RESULT_BILLING_OK);
                     // 然后通过对托管商品和每月采购历史记录的呼叫接收采购历史记录信息。
-                    loadPurchases((Activity) context, url, LTAppID, LTAppKey, mListener, mUploadListener);
+                    loadPurchases((Activity) context,  LTAppID, LTAppKey, mListener, mUploadListener);
                 }
 
                 @Override
@@ -149,12 +149,12 @@ public class OneStorePlayManager {
     /**
      * 查看历史记录
      */
-    private void loadPurchases(Activity context, final String url,
+    private void loadPurchases(Activity context,
                                final String LTAppID, final String LTAppKey,
                                onOneStoreSupportListener mListener,
                                onOneStoreUploadListener mUploadListener) {
-        loadPurchase(context, url, LTAppID, LTAppKey, IapEnum.ProductType.IN_APP, mListener, mUploadListener);
-        loadPurchase(context, url, LTAppID, LTAppKey, IapEnum.ProductType.AUTO, mListener, mUploadListener);
+        loadPurchase(context,  LTAppID, LTAppKey, IapEnum.ProductType.IN_APP, mListener, mUploadListener);
+        loadPurchase(context,  LTAppID, LTAppKey, IapEnum.ProductType.AUTO, mListener, mUploadListener);
     }
 
     /**
@@ -164,7 +164,7 @@ public class OneStorePlayManager {
      * @param productType 产品类型
      * @param mListener   接口回调
      */
-    private void loadPurchase(final Activity context, final String url,
+    private void loadPurchase(final Activity context,
                               final String LTAppID, final String LTAppKey, final IapEnum.ProductType productType,
                               final onOneStoreSupportListener mListener, final onOneStoreUploadListener mUpLoadListener) {
         if (mPurchaseClient == null) {
