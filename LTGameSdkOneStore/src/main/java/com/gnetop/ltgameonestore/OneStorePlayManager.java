@@ -7,6 +7,7 @@ import android.text.TextUtils;
 import android.util.Base64;
 import android.util.Log;
 
+import com.gnetop.ltgamecommon.impl.OnCreateOrderFailedListener;
 import com.gnetop.ltgamecommon.impl.OnCreateOrderListener;
 import com.gnetop.ltgamecommon.impl.onOneStoreSupportListener;
 import com.gnetop.ltgamecommon.impl.onOneStoreUploadListener;
@@ -69,7 +70,9 @@ public class OneStorePlayManager {
      * @param mListener 回调
      */
     public void initOneStore(final Activity context,  final String LTAppID, final String LTAppKey,
-                             final String packageID, final Map<String, Object> params, final onOneStoreSupportListener mListener,
+                             final String packageID, final Map<String, Object> params,
+                             final onOneStoreSupportListener mListener,
+                             final OnCreateOrderFailedListener mCreateListener,
                              final onOneStoreUploadListener mUpdateListener) {
         mPurchaseClient.connect(new PurchaseClient.ServiceConnectionListener() {
             @Override
@@ -79,7 +82,7 @@ public class OneStorePlayManager {
                 }
                 checkBillingSupportedAndLoadPurchases(context,  LTAppID, LTAppKey, mListener,
                         mUpdateListener);
-                getLTOrderID( LTAppID, LTAppKey, packageID, params);
+                getLTOrderID( LTAppID, LTAppKey, packageID, params,mCreateListener);
             }
 
             @Override
@@ -392,8 +395,9 @@ public class OneStorePlayManager {
      * @param packageID 项目对应的包名
      * @param params    游戏自定义内容
      */
-    private static void getLTOrderID( String LTAppID, String LTAppKey,
-                                     String packageID, Map<String, Object> params) {
+    private static void getLTOrderID(String LTAppID, String LTAppKey,
+                                     String packageID, Map<String, Object> params,
+                                     final OnCreateOrderFailedListener mListener) {
         Map<String, Object> map = new WeakHashMap<>();
         map.put("package_id", packageID);
         map.put("gid", "3");
@@ -413,11 +417,17 @@ public class OneStorePlayManager {
 
                     @Override
                     public void onOrderFailed(Throwable ex) {
+                        if (mListener!=null){
+                            mListener.onCreateOrderFailed(ex.getMessage());
+                        }
                         Log.e(TAG, ex.getMessage());
                     }
 
                     @Override
                     public void onOrderError(String error) {
+                        if (mListener!=null){
+                            mListener.onCreateOrderError(error);
+                        }
                         Log.e(TAG, error);
                     }
                 });
