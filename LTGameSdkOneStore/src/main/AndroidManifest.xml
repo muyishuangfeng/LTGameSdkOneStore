@@ -1,0 +1,9 @@
+<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.gnetop.ltgameonestore">
+
+    <application>
+        <meta-data
+            android:name="iap:api_version"
+            android:value="5" />
+    </application>
+</manifest>
