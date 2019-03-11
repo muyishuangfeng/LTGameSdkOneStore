@@ -44,7 +44,7 @@ public class OneStorePlayManager {
 
     private OneStorePlayManager(Context context, String publickey) {
         mPurchaseClient = new PurchaseClient(context, publickey);
-        this.mPublicKey=publickey;
+        this.mPublicKey = publickey;
     }
 
     /**
@@ -69,8 +69,8 @@ public class OneStorePlayManager {
      * @param context   上下文
      * @param mListener 回调
      */
-    public void initOneStore(final Activity context,  final String LTAppID, final String LTAppKey,
-                             final String packageID, final Map<String, Object> params,
+    public void initOneStore(final Activity context, final String LTAppID, final String LTAppKey,
+                             final String packageID, final String gid, final Map<String, Object> params,
                              final onOneStoreSupportListener mListener,
                              final OnCreateOrderFailedListener mCreateListener,
                              final onOneStoreUploadListener mUpdateListener) {
@@ -80,9 +80,9 @@ public class OneStorePlayManager {
                 if (mListener != null) {
                     mListener.onOneStoreConnected();
                 }
-                checkBillingSupportedAndLoadPurchases(context,  LTAppID, LTAppKey, mListener,
+                checkBillingSupportedAndLoadPurchases(context, LTAppID, LTAppKey, mListener,
                         mUpdateListener);
-                getLTOrderID( LTAppID, LTAppKey, packageID, params,mCreateListener);
+                getLTOrderID(LTAppID, LTAppKey, packageID,gid, params, mCreateListener);
             }
 
             @Override
@@ -119,7 +119,7 @@ public class OneStorePlayManager {
                 public void onSuccess() {
                     mListener.onOneStoreSuccess(OneStoreResult.RESULT_BILLING_OK);
                     // 然后通过对托管商品和每月采购历史记录的呼叫接收采购历史记录信息。
-                    loadPurchases((Activity) context,  LTAppID, LTAppKey, mListener, mUploadListener);
+                    loadPurchases((Activity) context, LTAppID, LTAppKey, mListener, mUploadListener);
                 }
 
                 @Override
@@ -156,8 +156,8 @@ public class OneStorePlayManager {
                                final String LTAppID, final String LTAppKey,
                                onOneStoreSupportListener mListener,
                                onOneStoreUploadListener mUploadListener) {
-        loadPurchase(context,  LTAppID, LTAppKey, IapEnum.ProductType.IN_APP, mListener, mUploadListener);
-        loadPurchase(context,  LTAppID, LTAppKey, IapEnum.ProductType.AUTO, mListener, mUploadListener);
+        loadPurchase(context, LTAppID, LTAppKey, IapEnum.ProductType.IN_APP, mListener, mUploadListener);
+        loadPurchase(context, LTAppID, LTAppKey, IapEnum.ProductType.AUTO, mListener, mUploadListener);
     }
 
     /**
@@ -180,7 +180,7 @@ public class OneStorePlayManager {
                     @Override
                     public void onSuccess(List<PurchaseData> purchaseDataList, String productType) {
                         if (purchaseDataList.toString().contains(devPayLoad)) {
-                            uploadServer( LTAppID, LTAppKey, purchaseDataList.get(0).getPurchaseId(), mUpLoadListener);
+                            uploadServer(LTAppID, LTAppKey, purchaseDataList.get(0).getPurchaseId(), mUpLoadListener);
                         }
                         Log.e(TAG, "queryPurchasesAsync onSuccess, " + purchaseDataList.toString());
                         if (IapEnum.ProductType.IN_APP.getType().equalsIgnoreCase(productType)) {
@@ -347,7 +347,7 @@ public class OneStorePlayManager {
                             return;
                         }
                         // 完成购买后, 将执行签名验证。
-                        boolean validPurchase =verifyPurchase(purchaseData.getPurchaseData(), purchaseData.getSignature());
+                        boolean validPurchase = verifyPurchase(purchaseData.getPurchaseData(), purchaseData.getSignature());
                         Log.e(TAG, "launchPurchaseFlowAsync verifyPurchase " + validPurchase);
                         if (validPurchase) {
                             if (!productId.equals(purchaseData.getProductId())) {
@@ -393,16 +393,17 @@ public class OneStorePlayManager {
      * @param LTAppID   乐推AppID
      * @param LTAppKey  乐推AppKey
      * @param packageID 项目对应的包名
+     * @param gid       服务器商品ID
      * @param params    游戏自定义内容
      */
     private static void getLTOrderID(String LTAppID, String LTAppKey,
-                                     String packageID, Map<String, Object> params,
+                                     String packageID, String gid, Map<String, Object> params,
                                      final OnCreateOrderFailedListener mListener) {
         Map<String, Object> map = new WeakHashMap<>();
         map.put("package_id", packageID);
-        map.put("gid", "3");
+        map.put("gid", gid);
         map.put("custom", params);
-        LoginBackManager.createOrder( LTAppID,
+        LoginBackManager.createOrder(LTAppID,
                 LTAppKey, map, new OnCreateOrderListener() {
                     @Override
                     public void onOrderSuccess(String result) {
@@ -417,7 +418,7 @@ public class OneStorePlayManager {
 
                     @Override
                     public void onOrderFailed(Throwable ex) {
-                        if (mListener!=null){
+                        if (mListener != null) {
                             mListener.onCreateOrderFailed(ex.getMessage());
                         }
                         Log.e(TAG, ex.getMessage());
@@ -425,7 +426,7 @@ public class OneStorePlayManager {
 
                     @Override
                     public void onOrderError(String error) {
-                        if (mListener!=null){
+                        if (mListener != null) {
                             mListener.onCreateOrderError(error);
                         }
                         Log.e(TAG, error);
@@ -433,14 +434,14 @@ public class OneStorePlayManager {
                 });
     }
 
-    private void uploadServer( String LTAppID, String LTAppKey,
+    private void uploadServer(String LTAppID, String LTAppKey,
                               String purchase_id,
                               final onOneStoreUploadListener mListener) {
         if (!TextUtils.isEmpty(devPayLoad)) {
             Map<String, Object> map = new WeakHashMap<>();
             map.put("purchase_id", purchase_id);
             map.put("lt_order_id", devPayLoad);
-            LoginBackManager.oneStorePlay( LTAppID, LTAppKey, map, new onOneStoreUploadListener() {
+            LoginBackManager.oneStorePlay(LTAppID, LTAppKey, map, new onOneStoreUploadListener() {
                 @Override
                 public void onOneStoreUploadSuccess(int result) {
                     if (!TextUtils.isEmpty(devPayLoad)) {
@@ -473,7 +474,7 @@ public class OneStorePlayManager {
 
     }
 
-    private   boolean verifyPurchase(String signedData, String signature) {
+    private boolean verifyPurchase(String signedData, String signature) {
         if (TextUtils.isEmpty(signedData) || TextUtils.isEmpty(signature)) {
             return false;
         }
@@ -481,7 +482,7 @@ public class OneStorePlayManager {
         return verify(key, signedData, signature);
     }
 
-    private  PublicKey generatePublicKey(String encodedPublicKey) {
+    private PublicKey generatePublicKey(String encodedPublicKey) {
         try {
             byte[] decodedKey = Base64.decode(encodedPublicKey, Base64.DEFAULT);
             KeyFactory keyFactory = KeyFactory.getInstance(KEY_FACTORY_ALGORITHM);
@@ -494,7 +495,7 @@ public class OneStorePlayManager {
         }
     }
 
-    private  boolean verify(PublicKey publicKey, String signedData, String signature) {
+    private boolean verify(PublicKey publicKey, String signedData, String signature) {
         try {
             Signature sig = Signature.getInstance(SIGNATURE_ALGORITHM);
             sig.initVerify(publicKey);
