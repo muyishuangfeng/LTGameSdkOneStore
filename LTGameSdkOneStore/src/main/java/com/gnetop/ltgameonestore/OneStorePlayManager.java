@@ -1,6 +1,5 @@
 package com.gnetop.ltgameonestore;
 
-import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -33,7 +32,6 @@ import java.util.WeakHashMap;
 
 public class OneStorePlayManager {
 
-    @SuppressLint("StaticFieldLeak")
     private static PurchaseClient mPurchaseClient;
     private static final int IAP_API_VERSION = 5;
     private static final String TAG = OneStorePlayManager.class.getSimpleName();
