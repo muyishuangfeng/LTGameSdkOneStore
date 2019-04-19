@@ -334,7 +334,7 @@ public class OneStorePlayManager {
         map.put("package_id", packageID);
         map.put("gid", gid);
         map.put("custom", params);
-        LoginBackManager.createOrder(LTAppID,
+        LoginBackManager.createOrder(activity,LTAppID,
                 LTAppKey, map, new OnCreateOrderListener() {
                     @Override
                     public void onOrderSuccess(String result) {
