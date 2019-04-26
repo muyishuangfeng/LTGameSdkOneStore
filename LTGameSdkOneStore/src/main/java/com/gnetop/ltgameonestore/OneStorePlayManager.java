@@ -14,6 +14,7 @@ import com.gnetop.ltgamecommon.impl.onOneStoreSupportListener;
 import com.gnetop.ltgamecommon.impl.onOneStoreUploadListener;
 import com.gnetop.ltgamecommon.login.LoginBackManager;
 import com.gnetop.ltgamecommon.model.OneStoreResult;
+import com.gnetop.ltgamecommon.util.PreferencesUtils;
 import com.onestore.iap.api.IapResult;
 import com.onestore.iap.api.PurchaseClient;
 import com.onestore.iap.api.PurchaseData;
@@ -41,7 +42,8 @@ public class OneStorePlayManager {
     private static final String SIGNATURE_ALGORITHM = "SHA512withRSA";
     private static String mPublicKey;
     private static boolean mIsInit = false;
-
+    private static final String PURCHASE_ID = "PURCHASE_ID";
+    private static final String DEVELOPER_PAYLOAD = "DEVELOPER_PAYLOAD";
 
     private static void init(Context context, String publickey) {
         mPurchaseClient = new PurchaseClient(context, publickey);
@@ -55,8 +57,10 @@ public class OneStorePlayManager {
      * @param context   上下文
      * @param mListener 回调
      */
-    public static void initOneStore(final Activity context, String publickey,final String productType,
-                                    final onOneStoreSupportListener mListener) {
+    public static void initOneStore(final Activity context, String publickey, final String productType,
+                                    final String LTAppID, final String LTAppKey,
+                                    final onOneStoreSupportListener mListener,
+                                    final onOneStoreUploadListener mUploadListener) {
         if (!mIsInit) {
             init(context, publickey);
             mIsInit = true;
@@ -68,7 +72,12 @@ public class OneStorePlayManager {
                     if (mListener != null) {
                         mListener.onOneStoreConnected();
                     }
-                    checkBillingSupportedAndLoadPurchases(context, productType,mListener);
+                    if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID)) &&
+                            !TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
+                        uploadServer(context, LTAppID, LTAppKey, PreferencesUtils.getString(context, PURCHASE_ID),
+                                PreferencesUtils.getString(context, DEVELOPER_PAYLOAD), mUploadListener);
+                    }
+                    checkBillingSupportedAndLoadPurchases(context, productType, mListener);
                 }
 
                 @Override
@@ -244,7 +253,7 @@ public class OneStorePlayManager {
         if (!mIsInit) {
             init(context, mPublicKey);
         } else {
-            getLTOrderID(context,LTAppID, LTAppKey, packageID, gid, params, selfRequestCode,productName,productId,type,mUpLoadListener,
+            getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type, mUpLoadListener,
                     mListener,
                     mCreateListener);
 
@@ -273,6 +282,8 @@ public class OneStorePlayManager {
 //                                    Log.e(TAG, "launchPurchaseFlowAsync payload is not valid.");
 //                                    return;
 //                                }
+                            PreferencesUtils.putString(context, PURCHASE_ID, purchaseData.getPurchaseId());
+                            PreferencesUtils.putString(context, DEVELOPER_PAYLOAD, purchaseData.getDeveloperPayload());
                             uploadServer(context, LTAppID, LTAppKey, purchaseData.getPurchaseId(),
                                     purchaseData.getDeveloperPayload(), mUpLoadListener);
                             // 完成购买后, 将执行签名验证。
@@ -336,7 +347,7 @@ public class OneStorePlayManager {
         map.put("package_id", packageID);
         map.put("gid", gid);
         map.put("custom", params);
-        LoginBackManager.createOrder(activity,LTAppID,
+        LoginBackManager.createOrder(activity, LTAppID,
                 LTAppKey, map, new OnCreateOrderListener() {
                     @Override
                     public void onOrderSuccess(String result) {
@@ -374,7 +385,12 @@ public class OneStorePlayManager {
             public void onOneStoreUploadSuccess(int result) {
                 Log.e(TAG, result + "");
                 mListener.onOneStoreUploadSuccess(result);
-
+                if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID))) {
+                    PreferencesUtils.remove(context, PURCHASE_ID);
+                }
+                if (!TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
+                    PreferencesUtils.remove(context, DEVELOPER_PAYLOAD);
+                }
             }
 
             @Override
