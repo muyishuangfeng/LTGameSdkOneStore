@@ -59,7 +59,7 @@ public class OneStorePlayManager {
      */
     public static void initOneStore(final Activity context, String publickey, final String productType,
                                     final String LTAppID, final String LTAppKey,
-                                    final String testID,
+                                    final int testID,
                                     final onOneStoreSupportListener mListener,
                                     final onOneStoreUploadListener mUploadListener) {
         if (!mIsInit) {
@@ -249,7 +249,7 @@ public class OneStorePlayManager {
     public static void getProduct(final Activity context, final String LTAppID, final String LTAppKey,
                                   int selfRequestCode, String productName,
                                   final String packageID, final String gid, final Map<String, Object> params,
-                                  final String productId, String type, String testID,final onOneStoreUploadListener mUpLoadListener,
+                                  final String productId, String type, int testID,final onOneStoreUploadListener mUpLoadListener,
                                   final onOneStoreSupportListener mListener, final OnCreateOrderFailedListener mCreateListener) {
         if (!mIsInit) {
             init(context, mPublicKey);
@@ -268,7 +268,7 @@ public class OneStorePlayManager {
     private static void launchPurchase(final Activity context, final String LTAppID, final String LTAppKey,
                                        int selfRequestCode, String productName,
                                        final String productId, String type, final String devPayLoad,
-                                       final String testID,
+                                       final int testID,
                                        final onOneStoreUploadListener mUpLoadListener,
                                        final onOneStoreSupportListener mListener) {
         if (mPurchaseClient != null) {
@@ -345,7 +345,7 @@ public class OneStorePlayManager {
                                      String packageID, String gid, Map<String, Object> params,
                                      final int selfRequestCode, final String productName,
                                      final String productId, final String type,
-                                     final String testID,
+                                     final int testID,
                                      final onOneStoreUploadListener mUpLoadListener,
                                      final onOneStoreSupportListener mListener,
                                      final OnCreateOrderFailedListener mOrderListener) {
@@ -380,7 +380,7 @@ public class OneStorePlayManager {
     }
 
     private static void uploadServer(final Context context, String LTAppID, final String LTAppKey,
-                                     String purchase_id, String devPayLoad,String testID,
+                                     String purchase_id, String devPayLoad,int testID,
                                      final onOneStoreUploadListener mListener) {
         Log.e(TAG, "uploadServer===========start");
         Map<String, Object> map = new WeakHashMap<>();
