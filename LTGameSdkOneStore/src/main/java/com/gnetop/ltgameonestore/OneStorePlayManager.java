@@ -59,6 +59,7 @@ public class OneStorePlayManager {
      */
     public static void initOneStore(final Activity context, String publickey, final String productType,
                                     final String LTAppID, final String LTAppKey,
+                                    final String testID,
                                     final onOneStoreSupportListener mListener,
                                     final onOneStoreUploadListener mUploadListener) {
         if (!mIsInit) {
@@ -75,7 +76,7 @@ public class OneStorePlayManager {
                     if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID)) &&
                             !TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
                         uploadServer(context, LTAppID, LTAppKey, PreferencesUtils.getString(context, PURCHASE_ID),
-                                PreferencesUtils.getString(context, DEVELOPER_PAYLOAD), mUploadListener);
+                                PreferencesUtils.getString(context, DEVELOPER_PAYLOAD),testID, mUploadListener);
                     }
                     checkBillingSupportedAndLoadPurchases(context, productType, mListener);
                 }
@@ -248,12 +249,13 @@ public class OneStorePlayManager {
     public static void getProduct(final Activity context, final String LTAppID, final String LTAppKey,
                                   int selfRequestCode, String productName,
                                   final String packageID, final String gid, final Map<String, Object> params,
-                                  final String productId, String type, final onOneStoreUploadListener mUpLoadListener,
+                                  final String productId, String type, String testID,final onOneStoreUploadListener mUpLoadListener,
                                   final onOneStoreSupportListener mListener, final OnCreateOrderFailedListener mCreateListener) {
         if (!mIsInit) {
             init(context, mPublicKey);
         } else {
-            getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type, mUpLoadListener,
+            getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type, testID,
+                    mUpLoadListener,
                     mListener,
                     mCreateListener);
 
@@ -265,7 +267,9 @@ public class OneStorePlayManager {
      */
     private static void launchPurchase(final Activity context, final String LTAppID, final String LTAppKey,
                                        int selfRequestCode, String productName,
-                                       final String productId, String type, final String devPayLoad, final onOneStoreUploadListener mUpLoadListener,
+                                       final String productId, String type, final String devPayLoad,
+                                       final String testID,
+                                       final onOneStoreUploadListener mUpLoadListener,
                                        final onOneStoreSupportListener mListener) {
         if (mPurchaseClient != null) {
             mPurchaseClient.launchPurchaseFlowAsync(IAP_API_VERSION,
@@ -285,7 +289,7 @@ public class OneStorePlayManager {
                             PreferencesUtils.putString(context, PURCHASE_ID, purchaseData.getPurchaseId());
                             PreferencesUtils.putString(context, DEVELOPER_PAYLOAD, purchaseData.getDeveloperPayload());
                             uploadServer(context, LTAppID, LTAppKey, purchaseData.getPurchaseId(),
-                                    purchaseData.getDeveloperPayload(), mUpLoadListener);
+                                    purchaseData.getDeveloperPayload(),testID, mUpLoadListener);
                             // 完成购买后, 将执行签名验证。
                             boolean validPurchase = verifyPurchase(purchaseData.getPurchaseData(), purchaseData.getSignature());
                             if (validPurchase) {
@@ -340,7 +344,9 @@ public class OneStorePlayManager {
     private static void getLTOrderID(final Activity activity, final String LTAppID, final String LTAppKey,
                                      String packageID, String gid, Map<String, Object> params,
                                      final int selfRequestCode, final String productName,
-                                     final String productId, final String type, final onOneStoreUploadListener mUpLoadListener,
+                                     final String productId, final String type,
+                                     final String testID,
+                                     final onOneStoreUploadListener mUpLoadListener,
                                      final onOneStoreSupportListener mListener,
                                      final OnCreateOrderFailedListener mOrderListener) {
         Map<String, Object> map = new WeakHashMap<>();
@@ -352,7 +358,7 @@ public class OneStorePlayManager {
                     @Override
                     public void onOrderSuccess(String result) {
                         launchPurchase(activity, LTAppID, LTAppKey, selfRequestCode, productName, productId,
-                                type, result, mUpLoadListener, mListener);
+                                type, result, testID,mUpLoadListener, mListener);
                     }
 
                     @Override
@@ -374,12 +380,13 @@ public class OneStorePlayManager {
     }
 
     private static void uploadServer(final Context context, String LTAppID, final String LTAppKey,
-                                     String purchase_id, String devPayLoad,
+                                     String purchase_id, String devPayLoad,String testID,
                                      final onOneStoreUploadListener mListener) {
         Log.e(TAG, "uploadServer===========start");
         Map<String, Object> map = new WeakHashMap<>();
         map.put("purchase_id", purchase_id);
         map.put("lt_order_id", devPayLoad);
+        map.put("pay_test", testID);
         LoginBackManager.oneStorePlay(LTAppID, LTAppKey, map, new onOneStoreUploadListener() {
             @Override
             public void onOneStoreUploadSuccess(int result) {
