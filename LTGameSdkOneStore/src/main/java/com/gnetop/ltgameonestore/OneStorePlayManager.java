@@ -15,6 +15,7 @@ import com.gnetop.ltgamecommon.impl.onOneStoreUploadListener;
 import com.gnetop.ltgamecommon.login.LoginBackManager;
 import com.gnetop.ltgamecommon.model.OneStoreResult;
 import com.gnetop.ltgamecommon.util.PreferencesUtils;
+import com.google.gson.Gson;
 import com.onestore.iap.api.IapResult;
 import com.onestore.iap.api.PurchaseClient;
 import com.onestore.iap.api.PurchaseData;
@@ -44,6 +45,8 @@ public class OneStorePlayManager {
     private static boolean mIsInit = false;
     private static final String PURCHASE_ID = "PURCHASE_ID";
     private static final String DEVELOPER_PAYLOAD = "DEVELOPER_PAYLOAD";
+    //是否消费
+    private static boolean mISConsume = false;
 
     private static void init(Context context, String publickey) {
         mPurchaseClient = new PurchaseClient(context, publickey);
@@ -57,7 +60,8 @@ public class OneStorePlayManager {
      * @param context   上下文
      * @param mListener 回调
      */
-    public static void initOneStore(final Activity context, String publickey, final String productType,
+    public static void initOneStore(final Activity context, final String publickey,
+                                    final String productType,
                                     final String LTAppID, final String LTAppKey,
                                     final int testID,
                                     final onOneStoreSupportListener mListener,
@@ -73,12 +77,7 @@ public class OneStorePlayManager {
                     if (mListener != null) {
                         mListener.onOneStoreConnected();
                     }
-                    if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID)) &&
-                            !TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
-                        uploadServer(context, LTAppID, LTAppKey, PreferencesUtils.getString(context, PURCHASE_ID),
-                                PreferencesUtils.getString(context, DEVELOPER_PAYLOAD),testID, mUploadListener);
-                    }
-                    checkBillingSupportedAndLoadPurchases(context, productType, mListener);
+                    checkBillingSupportedAndLoadPurchases(context, LTAppID, LTAppKey, testID, productType, mListener, mUploadListener);
                 }
 
                 @Override
@@ -102,8 +101,11 @@ public class OneStorePlayManager {
     /**
      * 检查是否支持
      */
-    private static void checkBillingSupportedAndLoadPurchases(final Context context, final String productType,
-                                                              final onOneStoreSupportListener mListener) {
+    private static void checkBillingSupportedAndLoadPurchases(final Context context,
+                                                              final String LTAppID, final String LTAppKey,
+                                                              final int testID, final String productType,
+                                                              final onOneStoreSupportListener mListener,
+                                                              final onOneStoreUploadListener mUploadListener) {
         if (mPurchaseClient == null) {
             if (mListener != null) {
                 mListener.onOneStoreClientFailed("PurchaseClient is not initialized");
@@ -122,13 +124,13 @@ public class OneStorePlayManager {
                                 public void onSuccess(List<PurchaseData> purchaseDataList, String productType) {
                                     Log.e(TAG, "queryPurchasesAsync onSuccess, " + purchaseDataList.toString());
                                     for (PurchaseData purchase : purchaseDataList) {
-                                        consumeItem(purchase, mListener);
+                                        consumeItem((Activity) context, LTAppID, LTAppKey, testID, purchase, mListener, mUploadListener);
                                     }
                                 }
 
                                 @Override
                                 public void onError(IapResult iapResult) {
-                                    mListener.onOneStoreError(iapResult.toString());
+                                    mListener.onOneStoreError("onError====" + iapResult.toString());
                                 }
 
                                 @Override
@@ -179,7 +181,11 @@ public class OneStorePlayManager {
      *
      * @param purchaseData 产品数据
      */
-    private static void consumeItem(final PurchaseData purchaseData, final onOneStoreSupportListener mListener) {
+    private static void consumeItem(final Activity context, final String LTAppID, final String LTAppKey,
+                                    final int testID,
+                                    final PurchaseData purchaseData,
+                                    final onOneStoreSupportListener mListener,
+                                    final onOneStoreUploadListener mUploadListener) {
         if (mPurchaseClient == null) {
             mListener.onOneStoreFailed(OneStoreResult.RESULT_PURCHASES_NEED_UPDATE);
             Log.e(TAG, "PurchaseClient is not initialized");
@@ -191,6 +197,15 @@ public class OneStorePlayManager {
                     public void onSuccess(PurchaseData purchaseData) {
                         Log.e(TAG, "consumeAsync===success");
                         mListener.onOneStoreSuccess(OneStoreResult.RESULT_CONSUME_OK);
+                        if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID)) &&
+                                !TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
+                            uploadServer(context, LTAppID, LTAppKey, PreferencesUtils.getString(context, PURCHASE_ID),
+                                    PreferencesUtils.getString(context, DEVELOPER_PAYLOAD), testID, mUploadListener);
+                        } else if (mISConsume) {
+                            uploadServer(context, LTAppID, LTAppKey, purchaseData.getPurchaseId(),
+                                    purchaseData.getDeveloperPayload(), testID, mUploadListener);
+                        }
+                        mISConsume = false;
                     }
 
                     @Override
@@ -219,6 +234,7 @@ public class OneStorePlayManager {
                 });
     }
 
+
     /**
      * oneStore回调
      *
@@ -226,13 +242,25 @@ public class OneStorePlayManager {
      * @param resultCode      结果码
      * @param selfRequestCode 自定义请求码
      */
-    public static void onActivityResult(int requestCode, int resultCode, Intent data, int selfRequestCode) {
+    public static void onActivityResult(Context context, String LTAppID, String LTAppKey,
+                                        int testID, int requestCode, int resultCode, Intent data, int selfRequestCode,
+                                        final onOneStoreUploadListener mListener, final onOneStoreSupportListener mSupportListener) {
         if (requestCode == selfRequestCode)
             if (resultCode == Activity.RESULT_OK) {
                 if (!mPurchaseClient.handlePurchaseData(data)) {
                     Log.e(TAG, "onActivityResult handlePurchaseData false ");
                 } else {
-                    Log.e(TAG, "onActivityResult handlePurchaseData true ");
+                    String signature = data.getStringExtra("purchaseSignature");
+                    String purchaseData = data.getStringExtra("purchaseData");
+                    Gson gson = new Gson();
+                    PurchaseData mPurchaseData = gson.fromJson(purchaseData, PurchaseData.class);
+                    if (mPurchaseData != null) {
+                        PreferencesUtils.putString(context, PURCHASE_ID, mPurchaseData.getPurchaseId());
+                        PreferencesUtils.putString(context, DEVELOPER_PAYLOAD, mPurchaseData.getDeveloperPayload());
+                        consumeItem((Activity) context, LTAppID, LTAppKey, testID, mPurchaseData, mSupportListener, mListener);
+                        Log.e(TAG, "onActivityResult handlePurchaseData true " + mPurchaseData.toString() + "==="
+                                + signature);
+                    }
                 }
             } else {
                 Log.e(TAG, "onActivityResult user canceled");
@@ -249,27 +277,26 @@ public class OneStorePlayManager {
     public static void getProduct(final Activity context, final String LTAppID, final String LTAppKey,
                                   int selfRequestCode, String productName,
                                   final String packageID, final String gid, final Map<String, Object> params,
-                                  final String productId, String type, int testID,final onOneStoreUploadListener mUpLoadListener,
+                                  final String productId, String type,
                                   final onOneStoreSupportListener mListener, final OnCreateOrderFailedListener mCreateListener) {
-        if (!mIsInit) {
-            init(context, mPublicKey);
-        } else {
-            getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type, testID,
-                    mUpLoadListener,
-                    mListener,
-                    mCreateListener);
+        if (!mISConsume) {
+            if (!mIsInit) {
+                init(context, mPublicKey);
+            } else {
+                getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type,
+                        mListener,
+                        mCreateListener);
 
+            }
         }
     }
 
     /**
      * 购买
      */
-    private static void launchPurchase(final Activity context, final String LTAppID, final String LTAppKey,
+    private static void launchPurchase(final Activity context,
                                        int selfRequestCode, String productName,
                                        final String productId, String type, final String devPayLoad,
-                                       final int testID,
-                                       final onOneStoreUploadListener mUpLoadListener,
                                        final onOneStoreSupportListener mListener) {
         if (mPurchaseClient != null) {
             mPurchaseClient.launchPurchaseFlowAsync(IAP_API_VERSION,
@@ -279,28 +306,8 @@ public class OneStorePlayManager {
 
                         @Override
                         public void onSuccess(PurchaseData purchaseData) {
-                            Log.e(TAG, "launchPurchaseFlowAsy onSuccess=====" + purchaseData.toString());
                             Log.e(TAG, "launchPurchaseFlowAsy======= " + purchaseData.getDeveloperPayload() + "====" + devPayLoad);
-                            // 完成购买后, 开发人员有效负载验证。
-//                                if (!TextUtils.equals(devPayLoad, purchaseData.getDeveloperPayload())) {
-//                                    Log.e(TAG, "launchPurchaseFlowAsync payload is not valid.");
-//                                    return;
-//                                }
-                            PreferencesUtils.putString(context, PURCHASE_ID, purchaseData.getPurchaseId());
-                            PreferencesUtils.putString(context, DEVELOPER_PAYLOAD, purchaseData.getDeveloperPayload());
-                            uploadServer(context, LTAppID, LTAppKey, purchaseData.getPurchaseId(),
-                                    purchaseData.getDeveloperPayload(),testID, mUpLoadListener);
-                            // 完成购买后, 将执行签名验证。
-                            boolean validPurchase = verifyPurchase(purchaseData.getPurchaseData(), purchaseData.getSignature());
-                            if (validPurchase) {
-                                if (productId.equals(purchaseData.getProductId())) {
-                                    // 托管商品 (inapp) 将在购买完成后使用。
-                                    consumeItem(purchaseData, mListener);
-                                }
-                            } else {
-                                mListener.onOneStoreFailed(OneStoreResult.RESULT_SIGNATURE_FAILED);
-                                Log.e(TAG, "launchPurchaseFlowAsync: Signature failed");
-                            }
+
                         }
 
                         @Override
@@ -345,8 +352,6 @@ public class OneStorePlayManager {
                                      String packageID, String gid, Map<String, Object> params,
                                      final int selfRequestCode, final String productName,
                                      final String productId, final String type,
-                                     final int testID,
-                                     final onOneStoreUploadListener mUpLoadListener,
                                      final onOneStoreSupportListener mListener,
                                      final OnCreateOrderFailedListener mOrderListener) {
         Map<String, Object> map = new WeakHashMap<>();
@@ -357,8 +362,9 @@ public class OneStorePlayManager {
                 LTAppKey, map, new OnCreateOrderListener() {
                     @Override
                     public void onOrderSuccess(String result) {
-                        launchPurchase(activity, LTAppID, LTAppKey, selfRequestCode, productName, productId,
-                                type, result, testID,mUpLoadListener, mListener);
+                        launchPurchase(activity, selfRequestCode, productName, productId,
+                                type, result, mListener);
+                        mISConsume = true;
                     }
 
                     @Override
@@ -380,7 +386,7 @@ public class OneStorePlayManager {
     }
 
     private static void uploadServer(final Context context, String LTAppID, final String LTAppKey,
-                                     String purchase_id, String devPayLoad,int testID,
+                                     String purchase_id, String devPayLoad, int testID,
                                      final onOneStoreUploadListener mListener) {
         Log.e(TAG, "uploadServer===========start");
         Map<String, Object> map = new WeakHashMap<>();
@@ -390,8 +396,8 @@ public class OneStorePlayManager {
         LoginBackManager.oneStorePlay(LTAppID, LTAppKey, map, new onOneStoreUploadListener() {
             @Override
             public void onOneStoreUploadSuccess(int result) {
-                Log.e(TAG, result + "");
                 mListener.onOneStoreUploadSuccess(result);
+                mISConsume = false;
                 if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID))) {
                     PreferencesUtils.remove(context, PURCHASE_ID);
                 }
@@ -411,6 +417,8 @@ public class OneStorePlayManager {
      * 释放
      */
     public static void release() {
+        mISConsume = false;
+        mIsInit = false;
         if (mPurchaseClient != null) {
             mPurchaseClient.terminate();
             mPurchaseClient = null;
