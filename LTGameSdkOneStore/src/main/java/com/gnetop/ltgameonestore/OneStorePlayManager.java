@@ -388,7 +388,6 @@ public class OneStorePlayManager {
     private static void uploadServer(final Context context, String LTAppID, final String LTAppKey,
                                      String purchase_id, String devPayLoad, int testID,
                                      final onOneStoreUploadListener mListener) {
-        Log.e(TAG, "uploadServer===========start");
         Map<String, Object> map = new WeakHashMap<>();
         map.put("purchase_id", purchase_id);
         map.put("lt_order_id", devPayLoad);
