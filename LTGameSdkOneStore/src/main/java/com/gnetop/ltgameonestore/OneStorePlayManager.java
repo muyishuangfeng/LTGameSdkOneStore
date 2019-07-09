@@ -43,10 +43,7 @@ public class OneStorePlayManager {
     private static final String SIGNATURE_ALGORITHM = "SHA512withRSA";
     private static String mPublicKey;
     private static boolean mIsInit = false;
-    private static final String PURCHASE_ID = "PURCHASE_ID";
-    private static final String DEVELOPER_PAYLOAD = "DEVELOPER_PAYLOAD";
-    //是否消费
-    private static boolean mISConsume = false;
+
 
     private static void init(Context context, String publickey) {
         mPurchaseClient = new PurchaseClient(context, publickey);
@@ -197,15 +194,11 @@ public class OneStorePlayManager {
                     public void onSuccess(PurchaseData purchaseData) {
                         Log.e(TAG, "consumeAsync===success");
                         mListener.onOneStoreSuccess(OneStoreResult.RESULT_CONSUME_OK);
-                        if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID)) &&
-                                !TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
-                            uploadServer(context, LTAppID, LTAppKey, PreferencesUtils.getString(context, PURCHASE_ID),
-                                    PreferencesUtils.getString(context, DEVELOPER_PAYLOAD), testID, mUploadListener);
-                        } else if (mISConsume) {
+                        if (purchaseData != null) {
                             uploadServer(context, LTAppID, LTAppKey, purchaseData.getPurchaseId(),
                                     purchaseData.getDeveloperPayload(), testID, mUploadListener);
                         }
-                        mISConsume = false;
+
                     }
 
                     @Override
@@ -255,8 +248,6 @@ public class OneStorePlayManager {
                     Gson gson = new Gson();
                     PurchaseData mPurchaseData = gson.fromJson(purchaseData, PurchaseData.class);
                     if (mPurchaseData != null) {
-                        PreferencesUtils.putString(context, PURCHASE_ID, mPurchaseData.getPurchaseId());
-                        PreferencesUtils.putString(context, DEVELOPER_PAYLOAD, mPurchaseData.getDeveloperPayload());
                         consumeItem((Activity) context, LTAppID, LTAppKey, testID, mPurchaseData, mSupportListener, mListener);
                         Log.e(TAG, "onActivityResult handlePurchaseData true " + mPurchaseData.toString() + "==="
                                 + signature);
@@ -279,15 +270,13 @@ public class OneStorePlayManager {
                                   final String packageID, final String gid, final Map<String, Object> params,
                                   final String productId, String type,
                                   final onOneStoreSupportListener mListener, final OnCreateOrderFailedListener mCreateListener) {
-        if (!mISConsume) {
-            if (!mIsInit) {
-                init(context, mPublicKey);
-            } else {
-                getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type,
-                        mListener,
-                        mCreateListener);
+        if (!mIsInit) {
+            init(context, mPublicKey);
+        } else {
+            getLTOrderID(context, LTAppID, LTAppKey, packageID, gid, params, selfRequestCode, productName, productId, type,
+                    mListener,
+                    mCreateListener);
 
-            }
         }
     }
 
@@ -364,7 +353,6 @@ public class OneStorePlayManager {
                     public void onOrderSuccess(String result) {
                         launchPurchase(activity, selfRequestCode, productName, productId,
                                 type, result, mListener);
-                        mISConsume = true;
                     }
 
                     @Override
@@ -396,13 +384,6 @@ public class OneStorePlayManager {
             @Override
             public void onOneStoreUploadSuccess(int result) {
                 mListener.onOneStoreUploadSuccess(result);
-                mISConsume = false;
-                if (!TextUtils.isEmpty(PreferencesUtils.getString(context, PURCHASE_ID))) {
-                    PreferencesUtils.remove(context, PURCHASE_ID);
-                }
-                if (!TextUtils.isEmpty(PreferencesUtils.getString(context, DEVELOPER_PAYLOAD))) {
-                    PreferencesUtils.remove(context, DEVELOPER_PAYLOAD);
-                }
             }
 
             @Override
@@ -416,7 +397,6 @@ public class OneStorePlayManager {
      * 释放
      */
     public static void release() {
-        mISConsume = false;
         mIsInit = false;
         if (mPurchaseClient != null) {
             mPurchaseClient.terminate();
